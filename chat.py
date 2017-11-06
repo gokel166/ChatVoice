@@ -1,35 +1,30 @@
-from flask import Flask, render_template
-from flask_socketio import SocketIO, emit
-import speech_recognition as sr
+import socket
+import time
 
-app = Flask(__name__)
+host = '127.0.0.1'
+port = 5000
 
-app.config[ 'SECRET_KEY' ] = 'aabhososjfk'
-socketio = SocketIO(app)
+clients = []
 
-#initialize default microphone source ---Important Note--speech recognition requires pyaudio
-r = sr.Recognizer()
-with sr.Microphone() as source:
-    audio = r.listen(source)
-#recognize speech input
-try:
-    print("You said " + r.recognize(audio))
-except LookupError:
-    print("Could not understand audio")
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind((host, port))
+s.setblocking(0)
 
-#Transcribe a WAV audio file
+quitting = False
+print("Server Started")
 
-
-#Start the chat server
-
-@app.route('/')
-def index():
-    return render_template('./ChatApper.html')
-
-@socketio.on('my event')
-def cust_evhandler(json):
-    print('receive something: ' + str(json))
-    socketio.emit('my response', json)
-
-if __name__ == '__main__':
-    socketio.run(app, debug=True)
+while not quitting:
+    try:
+        data, addr = s.recvfrom(1024)
+        if "Quit" in str(data):
+            quitting = True
+        if addr not in clients:
+            clients.append(addr)
+        
+        print(time.ctime(time.time()) + str(addr) + ": :" + str(data))
+        for client in clients:
+            s.sendto(data, client)
+    
+    except:
+        pass
+s.close()
